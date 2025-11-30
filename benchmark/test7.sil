@@ -1,0 +1,7 @@
+//sn = 0 and i = 1
+
+while (i <= size) {
+    i := i + 1;
+    sn := sn + 1
+}
+//sn != 0 -> sn = size

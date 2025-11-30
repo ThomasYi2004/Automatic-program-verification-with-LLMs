@@ -1,0 +1,18 @@
+//True
+
+x := 0;
+while(x < size) {
+    x := x + 1;
+    if(z <= y) {
+        y := z
+    } else {
+        y := y
+    }
+}
+
+/*
+if(size > 0) {
+    assert (z >= y);
+}
+*/
+
