@@ -7,7 +7,6 @@ import sys
 import random
 from fastapi import FastAPI, Request
 
-API_KEY = "AIzaSyCPQmzxD0l9jOTt6YvX8mET16rwubXJRUo"
 
 def mk_numeral(toks):
     return [ExprNumeral(int(toks[0]))]
@@ -150,7 +149,33 @@ formula = infixNotation(atom,
                     [("not", 1, opAssoc.RIGHT, mk_not),
                         ("and", 2, opAssoc.LEFT, mk_and),
                         ("or", 2, opAssoc.LEFT, mk_or)])"""
-    prompt = "Give me precisely all the formulas (state predicates) the Houdini algorithm would need to proof the correctness of this program for precondition " +pre+ " and postcondition "+post+ "strictly adhering to this grammar " + grammar+". Really think about it and make sure that you give all invariants so that it can prove the desired result! Don't write any additional text and put every invariant on a new line. Try to keep each individual formula short: " + prog
+    prompt = "Give me precisely all the formulas (state predicates) the Houdini algorithm would need to proof the correctness of this program for precondition " +pre+ " and postcondition "+post+ "strictly adhering to this grammar " + grammar+". Really think about it and make sure that you give all invariants so that it can prove the desired result! Don't write any additional text and put every invariant on a new line. Really think about it and give it your best! Try to keep each individual formula short: " + prog
+    prompt2 = """You are a helpful AI software assistant that reasons about how code behaves. Given a program,
+you can find ALL formulas (or state predicates) for Houdini, which can then be used to verify some property in the program.
+Houdini is a software verification algorithm for programs. The input to Houdini is a set of candidate predicates. For the given program, find
+the necessary predicates/state predicates to help Houdini verify the post-condition.
+Instructions:
+• Make a note of the pre-conditions or variable assignments in the program.
+• Analyze the loop body and make a note of the loop condition.
+• Output loop invariants that are true
+(i) before the loop execution,
+(ii) in every iteration of the loop and
+(iii) after the loop termination,
+such that the loop invariants imply the post condition.
+• If a loop invariant is a conjunction, split it into its parts.
+We have precondition: """ + pre + " postcondition: " + post + " and program " + prog + """. 
+For all variables, add conjunctions that bound the maximum and minimum values that they
+can take, if such bounds exist.
+If a variable is always equal to or smaller or larger than another variable, add a conjunction
+for their relation.
+If the assertion is guarded by a condition, use the guard condition in an implication.
+If certain variables are non-deterministic at the beginning or end of the loop, use an implication
+to make the invariant trivially true at that location.
+Output the state formulas needed for the program above. Lets think step by step. Really think about it and give it your best!
+Don't write any additional text and put every predicate on a new line and strictly adhere to this grammar
+""" + grammar
+    
+    inequalityprompt = "Try to capture all of the relations of the variables using different strict and not strict inequalities"
     response = model.generate_content(prompt).text
 
     # 4️⃣ Print the result
@@ -160,9 +185,9 @@ formula = infixNotation(atom,
     P = set([])
     for line in lines:
         # print(line)
-        if (line == "True"):
+        if (line == "True" or line == "true"):
             line = "1 = 1"
-        elif (line == "False"):
+        elif (line == "False" or line == "false"):
             line = "0 = 1"
         form = formula.parseString(line)[0]
         # print(type(form))

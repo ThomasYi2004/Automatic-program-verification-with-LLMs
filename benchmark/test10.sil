@@ -3,6 +3,8 @@ k := 0;
 while (k < 1) {
     if (m < a) {
         m := a
+    } else {
+        m := m
     };
     k := k + 1
 }
