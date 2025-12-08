@@ -1,3 +1,6 @@
+//Testcase 6
+//True
+
 x := 0;
 while(x < size) {
     x := x + 1;
@@ -8,4 +11,4 @@ while(x < size) {
     }
 }
 
-//size > 0 -> z >= y
+// size <= 0 or z >= y

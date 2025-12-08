@@ -1,4 +1,6 @@
+//Testcase 10
 // a <= m and j < 1
+
 k := 0;
 while (k < 1) {
     if (m < a) {
@@ -10,3 +12,4 @@ while (k < 1) {
 }
 
 // a >= m
+

@@ -1,3 +1,4 @@
+//Testcase 5
 //True
 
 x := 0;
@@ -10,9 +11,5 @@ while(x < size) {
     }
 }
 
-/*
-if(size > 0) {
-    assert (z >= y);
-}
-*/
+// size <= 0 or z >= y
 

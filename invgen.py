@@ -381,316 +381,9 @@ class StmtPrint(Stmt):
         print(("    " * indent) + "{" + str(annotation[self.entry]) + "}")
         print(("    " * indent) + "print(" + str(self.expr) + ")")
 
-############################################################################
-
-############################################################################
-# An abstract domain is a class with the following operations:
-#    leq: the partial order of the domain
-#   join: the least upper bound operator for leq
-#    top: the greatest element (w.r.t. leq)
-# bottom: the least element (w.r.t. leq)
-#   post: compute the post-condition of an element of the domain with respect to
-#         some given command
-
-class Sign:
-    """Arith-structure over Signs"""
-    top = 0  # unknown
-    pos = 1  # positve
-    neg = 2  # negative
-    zero = 3 # zero
-
-    @staticmethod
-    def str(num):
-        if num == Sign.zero:
-            return "0"
-        elif num == Sign.pos:
-            return "pos"
-        elif num == Sign.neg:
-            return "neg"
-        else:
-            return "top"
-
-    @staticmethod
-    def of_numeral(num):
-        # TODO
-        # The interpretation of numerals in signs
-        if (num == 0):
-            return Sign.zero
-        elif(num > 0):
-            return Sign.pos
-        else:
-            return Sign.neg
-
-    @staticmethod
-    def add(left, right):
-        # TODO
-        # The interpretation of addition in signs
-        if (left == Sign.pos and right == Sign.pos):
-            return Sign.pos
-        elif (left == Sign.neg and right == Sign.neg):
-            return Sign.neg
-        elif(left == Sign.zero):
-            return right
-        elif (right == Sign.zero):
-            return left
-        else:
-            return Sign.top
-
-    @staticmethod
-    def mul(left, right):
-        # TODO
-        # The interpretation of multiplication in signs
-        if (left == Sign.zero or right == Sign.zero):
-            return Sign.zero
-        elif(left == Sign.top or right == Sign.top):
-            return Sign.top
-        elif(left != right):
-            return Sign.neg
-        else:
-            return Sign.pos
-
-    @staticmethod
-    def negate(sign):
-        # TODO
-        # The interpretation of negation in signs
-        if (sign == Sign.pos):
-            return Sign.neg
-        if (sign == Sign.neg):
-            return Sign.pos
-        if (sign == Sign.zero):
-            return Sign.zero
-        if (sign == Sign.top):
-            return Sign.top
-
-class SignValuation:
-    """Domain of mappings from variables to signs"""
-    def __init__(self):
-        self.map = {}
-
-    def __setitem__(self, k, v):
-        self.map[k] = v
-
-    def __getitem__(self, k):
-        return self.map[k]
-
-    def keys(self):
-        return self.map.keys()
-
-    def __str__(self):
-        if self.map is None:
-            return "Bottom"
-        else:
-            return ",".join(map (lambda kv: "%s -> %s" % (kv[0], Sign.str(kv[1])), self.map.items()))
-
-    def is_bottom(self):
-        return self.map is None
-
-    def post(self, command):
-        return command.post(Sign, self)
-
-    @staticmethod
-    def bottom(vars):
-        valuation = SignValuation()
-        valuation.map = None
-        return valuation
-
-    @staticmethod
-    def top(vars):
-        valuation = SignValuation()
-        for x in vars:
-            valuation[x] = Sign.top
-        return valuation
-
-    @staticmethod
-    def leq(rho1, rho2):
-        """The order on sign valuations"""
-        if rho1.is_bottom():
-            return True
-        elif rho2.is_bottom():
-            return False
-        else:
-            # TODO
-            for var in rho1.keys():
-                if (not (rho1.__getitem__(var) == rho2.__getitem__(var) or rho2.__getitem__(var) == Sign.top)):
-                    return False
-
-            return True
-
-    @staticmethod
-    def join(rho1, rho2):
-        """The join (least upper bound) w.r.t. the order relation leq"""
-        if rho1.is_bottom():
-            return rho2
-        elif rho2.is_bottom():
-            return rho1
-        else:
-            # TODO
-            valuation = SignValuation()
-            for var in rho1.keys():
-                item1 = rho1.__getitem__(var)
-                item2 = rho2.__getitem__(var)
-                if (item1 == item2):
-                    newitem = item1
-                else:
-                    newitem = Sign.top
-                valuation.__setitem__(var,newitem)
-            return valuation
-
-
-
-# Note: a constant valuation v with v.map = {x -> None} is interpreted as {x -> Top};
-# a constant valuation with v.map = None is interpreted as Bottom.
-class ConstantValuation:
-    """Valuations over the integers + top (None)"""
-    def __init__(self):
-        self.map = {}
-
-    def __setitem__(self, k, v):
-        self.map[k] = v
-
-    def __getitem__(self, k):
-        return self.map[k]
-
-    def keys(self):
-        return self.map.keys()
-
-    def __str__(self):
-        if self.map is None:
-            return "Bottom"
-        else:
-            def const_str(v):
-                if v is None:
-                    return "top"
-                else:
-                    return str(v)
-            return ",".join(map (lambda kv: "%s -> %s" % (kv[0], const_str(kv[1])), self.map.items()))
-
-    def is_bottom(self):
-        return self.map is None
-
-    def post(self, command):
-        if self.is_bottom():
-            return self
-        else:
-            s = Solver()
-
-            # If m is a z3 model and e is an expression, you may use
-            #    m.evaluate(e.to_term(), True).as_long()
-            # to evaluate t to an integer.
-            valuation = ConstantValuation()
-            for var in self.keys():
-                valuation.__setitem__(var, self.__getitem__(var))
-            if isinstance(command, CmdAssign):
-                # TODO
-                # Access the left-hand side/right-hand side of
-                # the assignment with command.lhs/command.rhs
-                lhs = command.lhs
-                rhs = command.rhs
-                variable = const_symbol(lhs+ '\'')
-                s.add(variable == rhs.to_term())
-                for var in self.keys():
-                    if (self.__getitem__(var) != None):
-                        s.add(const_symbol(var) == self.__getitem__(var))
-
-                res = s.check()
-                if (res == sat):
-                    m = s.model()
-                    var_val = m.evaluate(rhs.to_term(), True).as_long()
-                    s.add(variable != var_val)
-                    if (s.check() == sat):
-                        # print("Assignment not const", const_val, command,variable, rhs, self.map)
-                        valuation.__setitem__(lhs, None)
-                    else:
-                        # print("Assignment const", const_val, command,variable, rhs, self.map)
-                        valuation.__setitem__(lhs, var_val)
-                else:
-                    print("something went wrong")
-                    
-                return valuation
-            elif isinstance(command, CmdAssume):
-                # TODO
-                # Access the formula being assumed with
-                # command.condition
-                s.add(command.condition.to_formula())
-                for var in self.keys():
-                    if (self.__getitem__(var) != None):
-                        s.add(const_symbol(var) == self.__getitem__(var))
-                res = s.check()
-                if (res == sat):
-                    m = s.model()
-                    for variable in self.keys():
-                        var = const_symbol(variable)
-                        s.push()
-                        var_val = m.evaluate(var, True).as_long()
-                        s.add(var != var_val)
-                        if (s.check() == sat):
-                            # print("Condition not const", var_val, command,variable, self.map)
-                            valuation.__setitem__(variable, None)
-                        else:
-                            # print("Condition const", var_val, command,variable, self.map)
-                            valuation.__setitem__(variable, var_val)
-                        s.pop()
-                else:
-                    return self.bottom(self.keys())
-                return valuation
-                    
-            else:
-                # print command is a no-op
-                print("command is a no-op")
-                return self
-
-    @staticmethod
-    def bottom(vars):
-        valuation = ConstantValuation()
-        valuation.map = None
-        return valuation
-
-    @staticmethod
-    def top(vars):
-        valuation = ConstantValuation()
-        for x in vars:
-            valuation[x] = None
-        return valuation
-
-    @staticmethod
-    def leq(rho1, rho2):
-        """The order on sign valuations"""
-        if rho1.is_bottom():
-            return True
-        elif rho2.is_bottom():
-            return False
-        else:
-            # TODO
-            for var in rho1.keys():
-                if (not (rho1.__getitem__(var) == rho2.__getitem__(var) or rho2.__getitem__(var) == None)):
-                    return False
-
-            return True
-            
-
-    @staticmethod
-    def join(rho1, rho2):
-        """The join (least upper bound) w.r.t. the order relation leq"""
-        if rho1.is_bottom():
-            return rho2
-        elif rho2.is_bottom():
-            return rho1
-        else:
-            # TODO
-            valuation = ConstantValuation()
-            for var in rho1.keys():
-                item1 = rho1.__getitem__(var)
-                item2 = rho2.__getitem__(var)
-                if (item1 == item2):
-                    newitem = item1
-                else:
-                    newitem = None
-                valuation.__setitem__(var,newitem)
-            return valuation
 
 
 class Houdini:
-    """Domain of mappings from variables to signs"""
     def __init__(self, P):
         self.formulas = set([])
         self.P = P
@@ -701,23 +394,9 @@ class Houdini:
     def __getformula__(self):
         return self.formulas
 
-    def keys(self):
-        return self.map.keys()
-
     def __str__(self):
-        # if self.map is None:
-        #     return "Bottom"
-        # else:
-        # return ",".join(map (lambda kv: "%s -> %s" % (kv[0], Sign.str(kv[1])), self.formulas))
-        # return (self.formulas.to_formula())
         return ",".join(str(x) for x in self.formulas)
-
-    def is_bottom(self):
-        return self.formulas == P
-
-    def post(self, command):
-        return command.post(Sign, self)
-
+    
     @staticmethod
     def pre(precon, P):
         valuation = Houdini(P)
@@ -730,52 +409,6 @@ class Houdini:
         valuation = Houdini(P)
         valuation.formulas = P
         return valuation
-
-    @staticmethod
-    def top(vars):
-        valuation = SignValuation()
-        for x in vars:
-            valuation[x] = Sign.top
-        return valuation
-
-    @staticmethod
-    def leq(rho1, rho2):
-        """The order on sign valuations"""
-        # if rho1.is_bottom():
-        #     return True
-        # elif rho2.is_bottom():
-        #     return False
-        # else:
-        #     # TODO
-        #     for form in rho2.__getformula__():
-        #         if (not (form in rho1.__getformula__())):
-        #             return False
-
-        #     return True
-        s = Solver()
-        for form in rho1.__getformula__():
-            s.add(form.to_formula())
-        s.add(Or(tuple([form.to_formula() for form in rho2.__getformula__()])))
-
-    @staticmethod
-    def join(rho1, rho2):
-        """The join (least upper bound) w.r.t. the order relation leq"""
-        if rho1.is_bottom():
-            return rho2
-        elif rho2.is_bottom():
-            return rho1
-        else:
-            # TODO
-            valuation = SignValuation()
-            for var in rho1.keys():
-                item1 = rho1.__getitem__(var)
-                item2 = rho2.__getitem__(var)
-                if (item1 == item2):
-                    newitem = item1
-                else:
-                    newitem = Sign.top
-                valuation.__setitem__(var,newitem)
-            return valuation
 
     @staticmethod
     def helper(var, substitution, form):
@@ -811,57 +444,18 @@ class Houdini:
             lhs = command.lhs
             rhs = command.rhs
             erg = Houdini.helper(lhs, rhs, annotation)
-            # print(erg)
             return erg
         else:
             return (FormOr(FormNot(command.condition), annotation))
 
     @staticmethod
     def consequence(form1, form2):
-        # print(form1, form2)
         s = Solver()
-        # print(type(form1))
         for a in form1.formulas:
             s.add(a.to_formula())
 
         s.add(Not(form2.to_formula()))
         return s.check() == unsat
-        
-            
-
-
-
-def analyze(domain, cfa):
-    """Given a domain and a control flow automaton, compute the least
-    inductive annotation (i.e., for all edge (u,v), we have
-    domain.leq(annotation[u].post(cfa.command(u,v)), annotation[v])) such that
-    annotation[cfa.entry] is domain.top
-    """
-    # Initialize the annotation: annotation[cfa.entry] = top,
-    # annotation[v] = bottom for all other v
-    annotation = {}
-    vars = cfa.vars()
-    for v in cfa.locations():
-        annotation[v] = domain.bottom(vars)
-    annotation[cfa.entry] = domain.top(vars)
-
-    #
-    # TODO
-    #
-    work = []
-    for v in cfa.locations():
-        work.append(v)
-
-    while (len(work) > 0):
-        u = work.pop(0)
-        # print((cfa.succs[0]))
-        for v in cfa.successors(u):
-            A = annotation[u].post(cfa.command(u,v))
-            if (not domain.leq(A,annotation[v])):
-                annotation[v] = domain.join(annotation[v], A)
-                work.append(v)
-
-    return annotation
 
 
 def analyze_houdini(domain, cfa, P, precondition):
@@ -870,41 +464,27 @@ def analyze_houdini(domain, cfa, P, precondition):
     domain.leq(annotation[u].post(cfa.command(u,v)), annotation[v])) such that
     annotation[cfa.entry] is domain.top
     """
-    # Initialize the annotation: annotation[cfa.entry] = top,
-    # annotation[v] = bottom for all other v
-    # P = set([FormOr(FormLt(ExprVar("x"), ExprNumeral(10)),(FormEq(ExprVar("x"), ExprNumeral(10)))),FormLt(ExprVar("x"), ExprNumeral(10)), FormNot(FormLt(ExprVar("x"), ExprNumeral(10)))])
+    
     annotation = {}
     for v in cfa.locations():
         annotation[v] = domain.bottom(P.copy())
-        # print(type(annotation[v]))
     annotation[cfa.entry] = domain.pre(precondition, P.copy())
-    # print(type(annotation[cfa.entry]))
 
-    #
-    # TODO
-    #
     work = []
     for v in cfa.locations():
         work.append(v)
 
     while (len(work) > 0):
         u = work.pop(0)
-        # print(cfa.command(0,2))
         for v in cfa.successors(u):
-            # print(annotation[1])
-            # print(v)
             tmp = set([])
             inwork = False
             for F in annotation[v].formulas:
-                # print(type(annotation[v]))
                 if (not domain.consequence(annotation[u],domain.wp(cfa.command(u,v),F))):
-                    # print(F)
                     tmp.add(F)
                     if (not inwork):
                         work.append(v)
                         inwork = True
             for a in tmp:
                 annotation[v].formulas.remove(a)
-                
-            # print(annotation[1])
     return annotation

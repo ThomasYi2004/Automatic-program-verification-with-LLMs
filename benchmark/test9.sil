@@ -1,6 +1,10 @@
+//Testcase 9
+//True
 
 x := 0;
 while (x < n) {
     x := x + 1
 }
+
 // x != n -> n < 0
+

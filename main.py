@@ -1,10 +1,7 @@
-import os
 import google.generativeai as genai
 from invgen import *
 from pyparsing import *
 from functools import reduce
-import sys
-import random
 from fastapi import FastAPI, Request
 
 
@@ -115,7 +112,6 @@ def analyze_and_print(domain, stmt,P, precondition, postcondition):
         return False
 
 app = FastAPI()
-
 @app.post("/check")
 async def backend(req: Request):
     data = await req.json()
@@ -132,9 +128,6 @@ async def backend(req: Request):
     elif post == "False":
         post = "0 = 1"
     progr = program.parseString(prog, parseAll=True)[0]
-    # program = program.parseFile(sys.argv[1],parseAll=True)[0]
-    # with open(sys.argv[1], "r") as f:
-    #     s = f.read()
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel("gemini-2.5-flash")
     grammar = """expr = infixNotation(integer | var,
@@ -178,21 +171,17 @@ Don't write any additional text and put every predicate on a new line and strict
     inequalityprompt = "Try to capture all of the relations of the variables using different strict and not strict inequalities"
     response = model.generate_content(prompt).text
 
-    # 4️⃣ Print the result
+
     print("Response: ", response, "end")
     lines = response.splitlines()
-    # print("lines: ",lines)
+
     P = set([])
     for line in lines:
-        # print(line)
         if (line == "True" or line == "true"):
             line = "1 = 1"
         elif (line == "False" or line == "false"):
             line = "0 = 1"
         form = formula.parseString(line)[0]
-        # print(type(form))
-        # print(form)
-        # print("form: ",form.to_formula())
         P.add(form)
     ok = analyze_and_print(Houdini, progr,P, formula.parseString(pre)[0], formula.parseString(post)[0])
     return {"success": ok, "invariants": response}
